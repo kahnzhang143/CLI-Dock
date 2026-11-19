@@ -1,214 +1,224 @@
 # CLI Dock
 
-把平时散落一地的命令行程序（PowerShell / Python / 批处理 / exe / 任意命令行）集中管起来的本地工具：一个总览面板、实时日志、参数占位符、计划任务、负载与托盘常驻。界面像 Docker Desktop，但管的是你本机的脚本。
+**English** | [简体中文](README.zh-CN.md)
 
-- **零 npm 依赖**：只用 Node 内置模块，拷过去就能跑，不用 `npm install`
-- **Windows 10/11**；界面是 Edge 的应用窗口（没有 Edge 时退回默认浏览器）
-- 数据存 **SQLite**（`data\cli-dock.db`），SQLite 组件缺失时自动退回 JSON，功能不受影响
+One panel for all the command-line programs scattered around your machine: PowerShell scripts, Python tools, batch files, `.exe`, or any raw command. It is built on the same idea as Docker Desktop — except the things it manages are your own local scripts.
 
-## 功能
+No install, no `npm install`, no admin rights. Windows 10/11.
 
-| 能力 | 说明 |
+![CLI Dock overview](docs/screenshot-en.png)
+
+- **Zero npm dependencies** — only Node built-in modules; copy the folder and run it
+- **Windows 10/11** — the UI is an Edge app window (falls back to the default browser)
+- **SQLite** storage (`data\cli-dock.db`); if the SQLite components are missing it degrades to JSON automatically, and every feature keeps working
+
+## Features
+
+| Capability | What it does |
 | --- | --- |
-| 程序管理 | 导入 `.ps1` / `.py` / `.cmd` / `.exe` / 自定义命令行，记住路径、参数、工作目录、环境变量 |
-| 参数占位符 | 参数里写 `{{PORT}}`，界面上单独填值，改参数不用改脚本 |
-| 状态区分 | **正常结束**（退出码 0）/ **异常退出**（非 0）/ **手动停止**，三者不会混 |
-| 计划任务 | 每隔一段时间 / 每天固定时间 / **每周指定几天 + 时间** / 指定时间跑一次 |
-| 实时日志 | 边跑边看，OUT/ERR 分色，支持搜索与历史运行日志 |
-| 负载看板 | 整机 CPU、内存、磁盘可用、托管程序的数量与合计 CPU/内存、Dock 自身占用 |
-| 快捷访问 | 网页类程序填好端口，卡片上直接「打开地址」；日志里出现 `http://...` 也会自动识别 |
-| 托盘常驻 | 关窗口不退出，托盘右键可重新打开面板 / 停止全部 / 退出 |
-| 自动重启 | 异常退出后按次数与间隔自动重试（可关） |
-| 中文 / English | 设置里一键切换，界面、提示、托盘菜单、系统日志行一起变 |
+| Program management | Import `.ps1` / `.py` / `.cmd` / `.exe` / any custom command line; remembers path, arguments, working directory, environment |
+| Parameter placeholders | Write `{{PORT}}` in the arguments and fill the value in the UI — change parameters without editing scripts |
+| Honest status | **Completed** (exit code 0) / **Failed** (non-zero) / **Stopped** (you pressed stop) are three distinct states that never get confused |
+| Scheduling | Every N seconds/minutes/hours, daily at fixed times, **weekly on selected weekdays + times**, or run once at a given time |
+| Live logs | Follow output while it runs, stdout/stderr colour-coded, searchable, with history of previous runs |
+| Load dashboard | Machine CPU, memory, free disk, number and total CPU/memory of managed programs, and Dock's own footprint |
+| Quick access | Give a web program a port and its card shows "Open address"; any `http://...` printed in the log is picked up automatically |
+| Tray resident | Closing the window does not stop anything: the tray menu can reopen the panel, stop everything, or quit |
+| Auto restart | Retry after a failure, with configurable count and interval (can be disabled) |
+| English / 中文 | One switch in Settings changes the UI, tooltips, tray menu, and even the system lines in program logs |
 
-## 快速开始
+## Quick start
 
-1. 下载本仓库（`Code → Download ZIP`），解压到**有写权限的目录**（别放 `C:\Program Files`，程序要在自己旁边写 `data\`）
-2. 双击 **`CLI-Dock.exe`**（或 `Launch.cmd`，两者等价）
-3. 首次启动会检查环境：没有 Node.js 就自动装一份（免管理员），没有 SQLite 组件就自动下载；然后浏览器窗口打开面板
+1. Download this repository (`Code → Download ZIP`) and extract it to a folder **you can write to** (not `C:\Program Files` — the program creates `data\` next to itself)
+2. Double-click **`CLI-Dock.exe`** (or `Launch.cmd`; they are equivalent)
+3. On first launch it checks the environment: it installs a private copy of Node.js if needed, downloads the SQLite components if missing, then opens the panel in a browser window
 
-命令行方式（排查问题更方便，能看到启动过程）：
+From the command line (better for troubleshooting, you can watch the startup):
 
 ```
-CLI-Dock.exe                 打开面板
-CLI-Dock.exe -stop           停止服务和托盘
-CLI-Dock.exe -Port 7900      换端口启动
-CLI-Dock.exe -Port 7900 -NoWindow    只起服务，不弹界面不起托盘
+CLI-Dock.exe                        open the panel
+CLI-Dock.exe -stop                  stop the service and the tray
+CLI-Dock.exe -Port 7900             start on another port
+CLI-Dock.exe -Port 7900 -NoWindow   service only: no window, no tray
 ```
 
-## 目录结构
+## Project layout
 
 ```
 CLI Dock\
-├─ CLI-Dock.exe         双击启动（ps12exe 打包的壳，只负责调 src\start.ps1）
-├─ Launch.cmd            同上，没 exe 也能用
-├─ src\                 程序和脚本都在这
-│  ├─ server.js         后端（Node 内置模块，零依赖）
-│  ├─ public\           前端（原生 HTML/CSS/JS，无构建）
-│  ├─ samples\          3 个示例程序
-│  ├─ lib\              SQLite 组件（缺了会自动下载，不必提交到仓库）
-│  └─ *.ps1             启动器 / 托盘 / 停止 / 环境准备 / 数据库代理
-├─ data\                运行数据（数据库、日志、生成的脚本；首次启动自动创建）
-└─ icon\                Logo 源文件（svg / ico）
+├─ CLI-Dock.exe         double-click launcher (ps12exe shell, only calls src\start.ps1)
+├─ Launch.cmd           same thing, works without the exe
+├─ src\                 program and scripts
+│  ├─ server.js         backend (Node built-in modules, no dependencies)
+│  ├─ public\           frontend (plain HTML/CSS/JS, no build step)
+│  ├─ samples\          three sample programs
+│  ├─ lib\              SQLite components (downloaded on demand, not committed)
+│  └─ *.ps1             launcher / tray / stop / environment prep / DB host
+├─ data\                runtime data (database, logs, generated scripts; created on first run)
+└─ icon\                logo sources (svg / ico)
 ```
 
-**升级不会碰到数据**：替换 `src\` 与 `CLI-Dock.exe` 即可，`data\` 保持不动；备份时只拷 `data\` 就够。
+**Upgrading never touches your data**: replace `src\` and `CLI-Dock.exe`, leave `data\` alone. To back up, copy `data\` only.
 
-## 导入一个程序
+## Importing a program
 
-点 `＋导入程序` → 选文件（或直接填命令）→ 确认运行时类型。
+Click `+ Import program` → pick a file (or type a command) → confirm the runtime type.
 
-| 字段 | 说明 |
+| Field | Meaning |
 | --- | --- |
-| 程序路径 / 命令 | 支持 `C:\x\x.ps1`、`~\Downloads\x.ps1`、`samples\x.ps1` 三种写法（见下） |
-| 启动参数 | 支持 `{{参数名}}` 占位，例如 `-Env {{ENV}} -DryRun` |
-| 工作目录 | 留空则用脚本所在目录 |
-| 访问端口 | 可选，网页类程序填了才有「打开地址」 |
-| 停止方式 | 强制结束进程树（默认）或先温和退出、超时再强制 |
-| 自动启动 / 自动重启 | 打开 CLI Dock 时自动拉起 / 异常退出后重试 |
+| Path / command | Three notations are supported: `C:\x\x.ps1`, `~\Downloads\x.ps1`, `samples\x.ps1` (see below) |
+| Arguments | Supports `{{NAME}}` placeholders, e.g. `-Env {{ENV}} -DryRun` |
+| Working directory | Empty means "the folder the script lives in" |
+| Port | Optional; only web programs need it, and only then does "Open address" appear |
+| Stop mode | Kill the whole process tree (default), or ask politely first and force after a grace period |
+| Auto start / auto restart | Launch when CLI Dock starts / retry after a failure |
 
-### 路径的三种写法
+### Three ways to write a path
 
-| 写法 | 含义 | 适合 |
+| Notation | Means | Best for |
 | --- | --- | --- |
-| `samples\x.ps1` | 相对 CLI Dock 目录 | 脚本跟着程序走，整夹搬到哪里都能用 |
-| `~\Downloads\x.ps1` | 用户目录 | 换机器换了用户名也仍然有效 |
-| `C:\tools\x.ps1` | 绝对路径 | 原样使用 |
+| `samples\x.ps1` | Relative to the CLI Dock folder | Scripts that travel with the app: the whole folder can move anywhere |
+| `~\Downloads\x.ps1` | The user profile | Still valid on another machine with a different user name |
+| `C:\tools\x.ps1` | Absolute path | Used as-is |
 
-保存时会自动转换（本目录内 → 相对路径；用户目录内 → `~\...`；其它盘符 → 保持绝对）。路径找不到时卡片会**划红线**并提示「路径失效」，点开改路径即可，参数和计划都不用重填。
+Paths are normalised when saved (inside this folder → relative, inside your user profile → `~\...`, other drives → absolute). If a path disappears, the card is **outlined in red** and says "path invalid"; fix the path and your parameters and schedule are still there.
 
-## 状态语义
+## Status semantics
 
-| 状态 | 含义 |
+| Status | Meaning |
 | --- | --- |
-| 运行中 | 进程活着 |
-| 正常结束 | 退出码 0。定时跑一轮就退出的任务属于这种，**不算报错** |
-| 异常退出 | 退出码非 0（界面上会显示退出码） |
-| 已停止 | 你手动点了「停止」 |
-| 重启中 | 异常退出后正在按策略自动重试 |
+| Running | The process is alive |
+| Completed | Exit code 0. Scheduled jobs that do a task and exit belong here — **this is not an error** |
+| Failed | Non-zero exit code (the code is shown on the card) |
+| Stopped | You pressed Stop |
+| Restarting | Currently retrying after a failure, per your auto-restart policy |
 
-## 计划任务
+## Scheduling
 
-详情页 →「计划」页签：
+Detail page → **Schedule** tab:
 
-| 触发方式 | 说明 |
+| Trigger | Meaning |
 | --- | --- |
-| 每隔一段时间 | 秒 / 分钟 / 小时，例如每 30 分钟 |
-| 每天固定时间 | 24 小时制，多个用逗号分隔，例如 `08:30, 17:30` |
-| 每周指定几天 + 时间 | 勾选星期几（可多选）+ 一个或多个时间，例如每周二、周五 `09:00, 18:30` |
-| 指定时间，只跑一次 | 到点跑一次，跑完自动关闭计划 |
+| Every N | Seconds / minutes / hours, e.g. every 30 minutes |
+| Daily at fixed times | 24-hour clock, comma separated, e.g. `08:30, 17:30` |
+| Weekly, selected weekdays + times | Tick any set of weekdays plus one or more times, e.g. Tuesday and Friday at `09:00, 18:30` |
+| Once at a given time | Runs once, then disables itself |
 
-规则：
+Rules:
 
-- 到点时程序还在跑，这一次**跳过**，不会叠加实例
-- 单次任务的时间已经过去时**不会补跑**（避免重启控制台时突然执行重要任务）
-- 周计划按本机时区计算，跨周自动顺延
-- 计划不依赖 Windows 任务计划程序：CLI Dock 没在运行时计划不会触发
+- If the program is still running when the time comes, that occurrence is **skipped** — instances never stack up
+- A one-shot time that has already passed **is not caught up** (so restarting the console never triggers an important job out of the blue)
+- Weekly schedules use the local time zone and roll over to the next week automatically
+- CLI Dock schedules in memory: it does not use Windows Task Scheduler, so nothing fires while CLI Dock is not running
 
-## 托盘
+## Tray
 
-- 启动后任务栏右侧出现图标；菜单：**打开面板 / 在浏览器中打开 / 停止所有运行中的程序 / 退出**
-- 双击图标 = 打开面板
-- 关掉窗口只是关界面，**程序还在后台跑**；要全停用托盘「退出」或 `CLI-Dock.exe -stop`
-- 托盘日志在 `data\tray.log`
+- An icon appears in the notification area after startup. Menu: **Open panel / Open in browser / Stop all running programs / Quit**
+- Double-click the icon to open the panel
+- Closing the window only closes the UI, **programs keep running**; use the tray's Quit or `CLI-Dock.exe -stop` to stop everything
+- Tray log: `data\tray.log`
 
-## 语言（中文 / English）
+## Language (English / 中文)
 
-右上角 `⚙ 设置` → **界面语言**，选 `中文` 或 `English`：
+`⚙ Settings` (top right) → **UI language** → `English` or `中文`:
 
-- 选完立刻生效，不用重启，也不用重新打开窗口
-- 存在程序自己的设置里（跟 `data\` 走），不是浏览器缓存，所以换个窗口、拷到别的机器仍然是同一种语言
-- 一起变的还有：托盘右键菜单与悬停提示（3 秒内跟上）、程序日志里的系统行（`▶ 启动命令` / `✔ 正常结束` …）、接口报错、目录快捷方式名
-- 「上一次运行的历史日志」是当时写下的原文，不随语言重写
-- 想临时看另一种语言（不改设置）可以加参数：`http://127.0.0.1:7811/?lang=en`
+- Takes effect immediately, no restart, no reopening the window
+- The choice is stored in the app's own settings (it travels with `data\`), not in browser storage, so a new window or another machine keeps the same language
+- It also switches the tray context menu and tooltips (within 3 seconds), the system lines written to program logs (`▶ Command`, `✔ Completed`, …), API error messages, and directory shortcut names
+- "Previous run" logs are the original text as it was written and are never rewritten
+- To peek at the other language without changing the setting: `http://127.0.0.1:7811/?lang=zh`
 
-## 日志
+## Logs
 
-- 详情页「日志」页签实时刷新（OUT 白 / ERR 红 / 系统行高亮），支持关键字搜索
-- 每次运行的原始文本在 `data\logs\app_<id>-<时间戳>.log`，保留最近 30 次
-- 同样的内容也会写进数据库的 `log_lines` 表，可用 `GET /api/db/logs?appId=…&limit=200` 查历史
-- PowerShell 子进程输出强制 UTF-8；如果你的脚本是「UTF-8 无 BOM 且含中文」，启动前会给出 ⚠ 提示
+- The **Logs** tab of the detail page updates live (stdout in white, stderr in red, system lines highlighted) and supports keyword search
+- The raw text of each run is kept in `data\logs\app_<id>-<timestamp>.log`, last 30 runs
+- The same content goes into the database's `log_lines` table, queryable via `GET /api/db/logs?appId=…&limit=200`
+- PowerShell child output is forced to UTF-8; if your script is "UTF-8 without BOM and contains non-ASCII", you get a warning before launch
 
-## 快捷访问
+## Quick access
 
-- 填了端口：卡片出现「打开地址」，地址是 `http://127.0.0.1:<端口>`
-- 没填端口也行：日志里第一次出现 `http://...` 会被自动识别并显示出来
+- With a port set, the card shows "Open address": `http://127.0.0.1:<port>`
+- Without a port it still works: the first `http://...` printed in the log is detected and shown
 
-## 数据
+## Data
 
-主存储是 SQLite（`data\cli-dock.db`）：
+The primary store is SQLite (`data\cli-dock.db`):
 
-| 表 | 内容 |
+| Table | Contents |
 | --- | --- |
-| `apps` | 程序定义、参数值、计划、最近运行记录 |
-| `settings` | Python / PowerShell 路径、停止宽限期、是否采集负载 |
-| `runs` | 每次运行一行：状态、退出码、起止时间、触发方式 |
-| `log_lines` | 所有输出行，超过 20 万行自动只留最近的 |
+| `apps` | Program definitions, parameter values, schedule, last run |
+| `settings` | Python / PowerShell paths, stop grace period, metrics on/off |
+| `runs` | One row per run: status, exit code, start/end, trigger |
+| `log_lines` | Every output line; capped at 200,000 rows, oldest dropped |
 
-- **自动迁移**：如果目录里有旧版的 `data\config.json`，首次启动会把它导入数据库并备份为 `config.json.migrated-backup`
-- **降级**：SQLite 组件不可用（下载失败 / DLL 加载失败）时自动改用 `data\config.json`，总览页的「数据存储」磁贴会显示 `JSON 降级` 及原因
-- 直接查库：
+- **Automatic migration**: if an old `data\config.json` exists, the first start imports it into the database and keeps a copy as `config.json.migrated-backup`
+- **Fallback**: if the SQLite components cannot be loaded (download failed / DLL load failed), storage switches to `data\config.json`; the "Data storage" tile in the overview shows `JSON fallback` and the reason
+- Query the database directly:
 
 ```
 powershell -File src\db-host.ps1 -Db data\cli-dock.db -Request '{"id":1,"op":"query","sql":"select name,status from runs order by id desc limit 10"}'
 ```
 
-## 复制到别的机器
+## Moving it to another machine
 
-整个文件夹拷过去就能用，前提只有两个：
+Copy the whole folder; only two preconditions:
 
-1. **Windows 10/11**（托盘用 WinForms，停止用 `taskkill`）
-2. **放在有写权限的目录**（程序要建 `data\`）
+1. **Windows 10/11** (the tray uses WinForms, stop uses `taskkill`)
+2. **A folder you can write to** (the app creates `data\`)
 
-Node.js 与 SQLite 组件都不必预装：缺失时自动获取（Node 走官方 zip 解压到用户目录，SQLite 走 nuget 包，都不需要管理员）。都在下载失败时会给出明确提示，程序也能用降级模式继续跑。
+Node.js and the SQLite components do not need to be preinstalled — both are fetched on demand (Node from the official zip into your user profile, SQLite from the NuGet package), neither needs admin rights. If both downloads fail you get a clear message and the app keeps working in fallback mode.
 
-注意：`data\config.json` 里可能存着明文的环境变量，把文件夹分享给别人前建议先删掉 `data\`。
+Note: `data\config.json` may contain plaintext environment variables. Delete `data\` before handing the folder to someone else.
 
-## 常见问题
+## FAQ
 
-**关掉窗口，程序还在跑吗？** 在跑，服务与托盘都在后台。要全停用托盘「退出」或 `CLI-Dock.exe -stop`。
+**Does closing the window stop my programs?** No. The service and the tray keep running. Use the tray's Quit or `CLI-Dock.exe -stop` to stop everything.
 
-**端口 7811 被占用**：`CLI-Dock.exe -Port 7900`，或设环境变量 `set CLIDOCK_PORT=7900` 后启动；`Launch.cmd` / 停止 / 托盘会一起生效。若该端口上是别的服务，启动器会识别出来并提示换端口，不会把别人的页面当成自己的界面打开。
+**Port 7811 is taken**: `CLI-Dock.exe -Port 7900`, or set `set CLIDOCK_PORT=7900` before starting; `Launch.cmd`, stop and the tray all follow it. If that port belongs to another service, the launcher recognises it and asks you to change ports instead of pretending someone else's page is your panel.
 
-**双击 exe 一闪而过**：用命令行运行 `CLI-Dock.exe` 看具体报错；常见原因是目录没有写权限、或 Node 自动安装失败（公司网络拦外网时可设 `CLIDOCK_SKIP_NODE_INSTALL=1` 后自己装）。
+**The exe flashes and disappears**: run `CLI-Dock.exe` from a command line to see the error. Common causes are a folder without write permission, or Node auto-install failing (on a locked-down network set `CLIDOCK_SKIP_NODE_INSTALL=1` and install Node yourself).
 
-**总览显示「JSON 降级」**：SQLite 组件没装成功。看磁贴的悬停提示；也可以手动把官方 NuGet 包 `Stub.System.Data.SQLite.Core.NetFramework` 里的三件套放到 `src\lib\`（`lib\net46\System.Data.SQLite.dll` → `src\lib\`，`build\net46\x64\SQLite.Interop.dll` → `src\lib\x64\`，`build\net46\x86\SQLite.Interop.dll` → `src\lib\x86\`），再运行 `powershell -File src\lib-init.ps1` 验证。
+**The overview says "JSON fallback"**: the SQLite components did not install. Check the tile tooltip; alternatively place the three files from the official NuGet package `Stub.System.Data.SQLite.Core.NetFramework` into `src\lib\` (`lib\net46\System.Data.SQLite.dll` → `src\lib\`, `build\net46\x64\SQLite.Interop.dll` → `src\lib\x64\`, `build\net46\x86\SQLite.Interop.dll` → `src\lib\x86\`), then run `powershell -File src\lib-init.ps1` to verify.
 
-**脚本参数绑定报错（比如 ValidateRange）**：检查「启动参数」是否填了不该填的值。启动器会把 `-Name value` / `-Switch` / `-Name:value` 正确转成具名参数，参数为空时不会塞空值。
+**Parameter binding errors (e.g. ValidateRange)**: check the values you filled in for the arguments. The launcher turns `-Name value` / `-Switch` / `-Name:value` into properly named parameters and never passes empty values.
 
-**Python 找不到**：设置里把 Python 改成 `py` 或绝对路径。
+**Python not found**: set Python to `py` or to an absolute path in Settings.
 
-**托盘图标不见了**：先看 `data\tray.log`；也可能是被 Windows 收进了「隐藏的图标」折叠区。
+**The tray icon vanished**: check `data\tray.log` first; Windows may also have moved it into the hidden-icons flyout.
 
-## 技术说明
+## Technical notes
 
-- 后端 `src\server.js`：Node 内置模块（http / fs / child_process），SSE 推送状态，无框架
-  - `GET /api/state`、`GET /api/events`（SSE）
-  - `POST /api/apps`、`DELETE /api/apps/:id`、`POST /api/apps/:id/{start|stop|restart|values|schedule}`
-  - `GET /api/apps/:id/tail?since=N`、`GET /api/log?file=…`、`GET /api/browse?dir=…`、`GET /api/db/logs`
-  - `POST /api/settings`、`POST /api/shutdown`
-- 前端 `src\public\`：原生 HTML/CSS/JS，无构建步骤，明亮/深色主题
-- 进程：`spawn` + 独立 stdout/stderr 管道，按行解码（UTF-8 失败回退 GBK）；停止用 `taskkill /T /F` 结束整棵树
-- 计划器：10 秒一跳的内存调度，`nextRunAt` 在界面可见
-- 托盘：`tray.ps1` + WinForms NotifyIcon（`Application::Run()` 消息泵）
-- 负载：常驻 `metrics.ps1`，2 秒一采样，服务端没心跳就自己退出
-- 存储：`db-client.js`（Node 侧队列与批量写）+ `db-host.ps1`（常驻 PowerShell 持有 SQLite 连接）
-- 环境准备：`node-env.ps1`（Node 查找/安装）、`lib-init.ps1`（SQLite 组件下载与加载校验）
+- Backend `src\server.js`: Node built-in modules (http / fs / child_process), state pushed over SSE, no framework
+  - `GET /api/state`, `GET /api/events` (SSE)
+  - `POST /api/apps`, `DELETE /api/apps/:id`, `POST /api/apps/:id/{start|stop|restart|values|schedule}`
+  - `GET /api/apps/:id/tail?since=N`, `GET /api/log?file=…`, `GET /api/browse?dir=…`, `GET /api/db/logs`
+  - `POST /api/settings`, `POST /api/shutdown`
+- Frontend `src\public\`: plain HTML/CSS/JS, no build step, light and dark themes
+- Processes: `spawn` with separate stdout/stderr pipes, decoded line by line (UTF-8, GBK fallback); stop uses `taskkill /T /F` on the whole tree
+- Scheduler: a 10-second in-memory tick; `nextRunAt` is visible in the UI
+- Tray: `tray.ps1` with a WinForms NotifyIcon (`Application::Run()` message pump)
+- Metrics: a resident `metrics.ps1` sampling every 2 seconds; it exits by itself when the server stops sending heartbeats
+- Storage: `db-client.js` (queue and batched writes on the Node side) + `db-host.ps1` (a resident PowerShell process holding the SQLite connection)
+- Environment prep: `node-env.ps1` (find or install Node), `lib-init.ps1` (download and validate the SQLite components)
 
-## 自己打包 exe
+## Building the exe yourself
 
-用 [ps12exe](https://github.com/MScholtes/PS2EXE)（PowerShell 模块）：
+Using [ps12exe](https://github.com/MScholtes/PS2EXE) (a PowerShell module):
 
 ```
 Install-Module ps12exe -Scope CurrentUser -Force
 
 $res = @{
   iconFile = 'icon\cli-dock.ico'
-  title = 'CLI Dock'; description = '本地命令行程序管理器'
+  title = 'CLI Dock'; description = 'Local command-line program manager'
   product = 'CLI Dock'; version = '1.3.0.0'
 }
 ps12exe -InputFile 'src\launcher.ps1' -OutputFile 'CLI-Dock.exe' `
         -resourceParams $res -architecture anycpu -supportOS
 ```
 
-exe 里只有 30 多行启动壳，逻辑都在 `src\`，所以改脚本不用重新打包。
+The exe is a ~39 KB launcher shell; all logic lives in `src\`, so editing scripts never requires rebuilding it.
+
+## License
+
+[MIT](LICENSE) © 2026 Kahn Zhang
