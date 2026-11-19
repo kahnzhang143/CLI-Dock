@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CLI Dock · 本地程序管理器</title>
+    <script>
+      // 尽早决定主题，避免刷新时闪一下白/黑
+      (function () {
+        try {
+          var saved = localStorage.getItem('clidock-theme');
+          if (!saved) {
+            saved = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          }
+          document.documentElement.setAttribute('data-theme', saved);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="icon" type="image/svg+xml" href="/icon/cli-dock-small.svg" />
+    <link rel="apple-touch-icon" href="/icon/cli-dock.svg" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <button class="brand" id="btnHome" data-i18n-title="top.home.title" title="返回总览">
+          <span class="brand-mark"><img src="/icon/cli-dock-small.svg" width="30" height="30" alt="" /></span>
+          <span class="brand-text">
+            <strong>CLI Dock</strong>
+            <em data-i18n="brand.sub">本地程序管理器</em>
+          </span>
+        </button>
+        <div class="topstats" id="topStats"></div>
+        <div class="topactions">
+          <button class="btn btn-primary" id="btnImport"><span class="ico">＋</span><span data-i18n="top.import">导入程序</span></button>
+          <button class="btn btn-icon" id="btnTheme" data-i18n-title="top.theme.title" title="切换明亮 / 深色主题">☀</button>
+          <button class="btn btn-icon" id="btnSettings" data-i18n-title="top.settings.title" title="设置">⚙</button>
+          <button class="btn btn-icon" id="btnQuit" data-i18n-title="top.quit.title" title="停止全部并退出">⏻</button>
+        </div>
+      </header>
+
+      <div class="body">
+        <aside class="sidebar">
+          <div class="sidebar-head">
+            <span class="sidebar-title" data-i18n="side.title">我的程序</span>
+            <span class="count" id="appCount">0</span>
+          </div>
+          <div class="searchbox">
+            <input id="appSearch" type="search" data-i18n-placeholder="side.search.placeholder" placeholder="搜索名称或路径" autocomplete="off" />
+          </div>
+          <div class="applist" id="appList"></div>
+          <div class="sidebar-foot" id="sidebarFoot"></div>
+        </aside>
+
+        <main class="main">
+          <section class="view" id="overview">
+            <div class="view-head">
+              <div>
+                <h1 data-i18n="ov.title">总览</h1>
+                <p class="muted" id="overviewSub" data-i18n="ov.sub">所有已纳管的程序</p>
+              </div>
+              <div class="segmented" id="statusFilter">
+                <button class="seg active" data-filter="all" data-i18n="ov.filter.all">全部</button>
+                <button class="seg" data-filter="running" data-i18n="ov.filter.running">运行中</button>
+                <button class="seg" data-filter="failed" data-i18n="ov.filter.failed">已报错</button>
+                <button class="seg" data-filter="stopped" data-i18n="ov.filter.stopped">已结束</button>
+              </div>
+            </div>
+
+            <div class="metrics" id="metrics"></div>
+
+            <div class="grid" id="overviewGrid"></div>
+          </section>
+
+          <section class="view hidden" id="detail">
+            <div class="detail-head">
+              <button class="btn btn-ghost back" id="btnBack" data-i18n-title="top.home.title" title="返回总览" data-i18n="detail.back">← 总览</button>
+              <div class="detail-title">
+                <div class="detail-name">
+                  <h1 id="dName">—</h1>
+                  <span class="pill" id="dStatus">—</span>
+                </div>
+                <div class="chips" id="dMeta"></div>
+              </div>
+              <div class="detail-actions" id="dActions"></div>
+            </div>
+
+            <div class="result-banner hidden" id="dResult"></div>
+
+            <div class="tabs" id="dTabs">
+              <button class="tab active" data-tab="logs" data-i18n="tab.logs">日志</button>
+              <button class="tab" data-tab="params" data-i18n="tab.params">参数</button>
+              <button class="tab" data-tab="schedule" data-i18n="tab.schedule">计划</button>
+              <button class="tab" data-tab="runs" data-i18n="tab.runs">运行记录</button>
+              <button class="tab" data-tab="config" data-i18n="tab.config">配置</button>
+            </div>
+
+            <div class="panels">
+              <div class="panel" id="panel-logs">
+                <div class="logbar">
+                  <div class="logsearch">
+                    <span class="ico">⌕</span>
+                    <input id="logSearch" type="search" data-i18n-placeholder="logs.search.placeholder" placeholder="在日志中搜索关键字（报错、订单号、接口路径…）" autocomplete="off" />
+                  </div>
+                  <button class="chip hidden" id="btnLive" data-i18n="logs.backLive">← 回到实时</button>
+                  <button class="chip" id="toggleErr" data-i18n="logs.errorsOnly">仅错误</button>
+                  <button class="chip on" id="toggleFollow" data-i18n="logs.follow">自动滚动</button>
+                  <button class="chip" id="btnCopy" data-i18n="common.copy">复制</button>
+                  <button class="chip" id="btnClearLog" data-i18n="logs.clear">清屏</button>
+                  <span class="logstat" id="logStat"></span>
+                </div>
+                <div class="logview" id="logView"></div>
+              </div>
+
+              <div class="panel hidden" id="panel-params">
+                <div class="panel-head">
+                  <div>
+                    <h2 data-i18n="params.title">运行参数</h2>
+                    <p class="muted" data-i18n-html="params.desc">
+                      参数值会持久保存在本机，重启程序时自动带入。命令 / 参数 / 工作目录里可用
+                      <code>{{参数名}}</code> 引用，同时也会作为环境变量注入。
+                    </p>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="btn btn-ghost" id="btnAddParam" data-i18n="params.add">＋ 添加参数</button>
+                    <button class="btn btn-primary" id="btnSaveParams" data-i18n="params.save">保存参数</button>
+                  </div>
+                </div>
+                <div class="param-table" id="paramTable"></div>
+              </div>
+
+              <div class="panel hidden" id="panel-schedule">
+                <div class="panel-head">
+                  <div>
+                    <h2 data-i18n="sched.title">计划任务</h2>
+                    <p class="muted" data-i18n-html="sched.desc">
+                      到点自动启动。周期性跑完就退出的任务（比如每次只跑一轮的脚本）退出码 0 会显示
+                      <strong>正常结束</strong>，只有非 0 才算报错。
+                    </p>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="btn btn-primary" id="btnSaveSchedule" data-i18n="sched.save">保存计划</button>
+                  </div>
+                </div>
+
+                <div class="sched">
+                  <label class="switch">
+                    <input type="checkbox" id="sched_enabled" />
+                    <span data-i18n="sched.enabled">启用计划</span>
+                  </label>
+
+                  <label class="field">
+                    <span data-i18n="sched.mode">触发方式</span>
+                    <select id="sched_mode">
+                      <option value="none" data-i18n="sched.mode.none">不启用</option>
+                      <option value="interval" data-i18n="sched.mode.interval">每隔一段时间</option>
+                      <option value="daily" data-i18n="sched.mode.daily">每天固定时间</option>
+                      <option value="weekly" data-i18n="sched.mode.weekly">每周指定几天 + 时间</option>
+                      <option value="once" data-i18n="sched.mode.once">指定时间，只跑一次</option>
+                    </select>
+                  </label>
+
+                  <div class="sched-row" id="schedIntervalRow">
+                    <label class="field">
+                      <span data-i18n="sched.interval">间隔</span>
+                      <input id="sched_value" type="number" min="1" step="1" />
+                    </label>
+                    <label class="field">
+                      <span data-i18n="sched.unit">单位</span>
+                      <select id="sched_unit">
+                        <option value="minutes" data-i18n="sched.unit.minutes">分钟</option>
+                        <option value="seconds" data-i18n="sched.unit.seconds">秒</option>
+                        <option value="hours" data-i18n="sched.unit.hours">小时</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <label class="field" id="schedDailyRow">
+                    <span><span data-i18n="sched.dailyTimes">每天时间</span> <em data-i18n="sched.dailyTimes.hint">24 小时制，多个用逗号分隔</em></span>
+                    <input id="sched_times" placeholder="08:30, 17:30" spellcheck="false" />
+                  </label>
+
+                  <div class="sched-week" id="schedWeeklyRow">
+                    <div class="field">
+                      <span><span data-i18n="sched.weekdays">星期几</span> <em data-i18n="sched.weekdays.hint">可多选</em></span>
+                      <div class="weekday-picker" id="schedWeekdays">
+                        <label><input type="checkbox" value="1" /><span data-i18n="sched.weekday.1">一</span></label>
+                        <label><input type="checkbox" value="2" /><span data-i18n="sched.weekday.2">二</span></label>
+                        <label><input type="checkbox" value="3" /><span data-i18n="sched.weekday.3">三</span></label>
+                        <label><input type="checkbox" value="4" /><span data-i18n="sched.weekday.4">四</span></label>
+                        <label><input type="checkbox" value="5" /><span data-i18n="sched.weekday.5">五</span></label>
+                        <label><input type="checkbox" value="6" /><span data-i18n="sched.weekday.6">六</span></label>
+                        <label><input type="checkbox" value="0" /><span data-i18n="sched.weekday.0">日</span></label>
+                      </div>
+                    </div>
+                    <label class="field">
+                      <span><span data-i18n="sched.weeklyTimes">运行时间</span> <em data-i18n="sched.weeklyTimes.hint">24 小时制，多个用逗号分隔</em></span>
+                      <input id="sched_weekly_times" placeholder="09:00" spellcheck="false" />
+                    </label>
+                  </div>
+
+                  <label class="field" id="schedOnceRow">
+                    <span data-i18n="sched.onceAt">执行时间</span>
+                    <input id="sched_at" type="datetime-local" />
+                  </label>
+
+                  <div class="sched-note" id="schedSummary"></div>
+                </div>
+              </div>
+
+              <div class="panel hidden" id="panel-runs">
+                <div class="panel-head">
+                  <div>
+                    <h2 data-i18n="runs.title">运行记录</h2>
+                    <p class="muted" data-i18n="runs.desc">每次启动都会留下完整日志文件，选中可回看当时输出。</p>
+                  </div>
+                </div>
+                <div class="runlist" id="runList"></div>
+              </div>
+
+              <div class="panel hidden" id="panel-config">
+                <div class="panel-head">
+                  <div>
+                    <h2 data-i18n="config.title">配置</h2>
+                    <p class="muted" data-i18n="config.desc">导入一次即可长期使用，需要改动时点“编辑配置”。</p>
+                  </div>
+                  <div class="panel-actions">
+                    <button class="btn btn-ghost" id="btnEditConfig" data-i18n="config.edit">编辑配置</button>
+                    <button class="btn btn-ghost danger" id="btnDeleteApp" data-i18n="config.delete">删除程序</button>
+                  </div>
+                </div>
+                <div class="kv" id="configKV"></div>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <div class="toasts" id="toasts"></div>
+
+    <!-- 导入 / 编辑 -->
+    <div class="modal-root hidden" id="importModal">
+      <div class="modal-backdrop" data-close="importModal"></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+        <div class="modal-head">
+          <h2 id="importTitle" data-i18n="import.title">导入程序</h2>
+          <button class="btn btn-icon" data-close="importModal" data-i18n-title="common.close" title="关闭">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="picker">
+            <div class="picker-head">
+              <span class="muted" data-i18n="import.picker.note">从目录里挑一个程序，路径会自动填好</span>
+              <button class="btn btn-ghost" id="btnPickToggle" data-i18n="import.picker.expand">展开目录</button>
+            </div>
+            <div class="picker-panel hidden" id="pickerPanel">
+              <div class="picker-toolbar">
+                <button class="chip" id="btnPickUp" data-i18n="import.picker.up">↑ 上一级</button>
+                <input id="pickDir" placeholder="C:\path\to\scripts" />
+                <button class="chip" id="btnPickGo" data-i18n="import.picker.go">打开</button>
+              </div>
+              <div class="picker-shortcuts" id="pickShortcuts"></div>
+              <div class="picker-list" id="pickList"></div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <label class="field">
+              <span data-i18n="import.field.name">名称</span>
+              <input id="f_name" data-i18n-placeholder="import.field.name.placeholder" placeholder="例如：库存同步脚本" />
+            </label>
+            <label class="field">
+              <span data-i18n="import.field.runtime">运行时</span>
+              <select id="f_runtime">
+                <option value="ps1">PowerShell (.ps1)</option>
+                <option value="py">Python (.py)</option>
+                <option value="cmd" data-i18n="import.runtime.cmd">批处理 (.cmd/.bat)</option>
+                <option value="exe" data-i18n="import.runtime.exe">可执行文件 (.exe)</option>
+                <option value="custom" data-i18n="import.runtime.custom">自定义命令行</option>
+              </select>
+            </label>
+            <label class="field span2">
+              <span><span data-i18n="import.field.command">程序路径 / 命令</span> <em data-i18n="import.field.command.hint">支持相对路径（相对本程序目录）和 ~\ 开头（用户目录）</em></span>
+              <input id="f_command" data-i18n-placeholder="import.field.command.placeholder" placeholder="C:\scripts\sync.ps1   或   ~\Downloads\sync.ps1   或   samples\hello.ps1" spellcheck="false" />
+            </label>
+            <label class="field span2">
+              <span><span data-i18n="import.field.args">启动参数</span> <em data-i18n="import.field.args.hint">支持 {{参数名}} 占位</em></span>
+              <input id="f_args" placeholder="-Env {{ENV}} -DryRun" spellcheck="false" />
+            </label>
+            <label class="field span2">
+              <span><span data-i18n="import.field.cwd">工作目录</span> <em data-i18n="import.field.cwd.hint">留空则使用脚本所在目录，也支持相对路径 / ~\</em></span>
+              <input id="f_cwd" data-i18n-placeholder="import.field.cwd.placeholder" placeholder="C:\scripts  或  ~\Downloads" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span><span data-i18n="import.field.port">访问端口</span> <em data-i18n="import.field.port.hint">可选，网页类程序</em></span>
+              <input id="f_port" placeholder="8080" spellcheck="false" />
+            </label>
+            <label class="field">
+              <span data-i18n="import.field.stopMode">停止方式</span>
+              <select id="f_stopmode">
+                <option value="force" data-i18n="import.stop.force">强制结束进程树（默认）</option>
+                <option value="graceful" data-i18n="import.stop.graceful">先温和退出，超时再强制</option>
+              </select>
+            </label>
+            <label class="field span2">
+              <span><span data-i18n="import.field.env">环境变量</span> <em data-i18n="import.field.env.hint">每行一个 KEY=VALUE</em></span>
+              <textarea id="f_env" rows="3" placeholder="DEMO_TOKEN=abc123&#10;LOG_LEVEL=info" spellcheck="false"></textarea>
+            </label>
+            <label class="field span2">
+              <span data-i18n="import.field.desc">备注</span>
+              <input id="f_desc" data-i18n-placeholder="import.field.desc.placeholder" placeholder="这个程序做什么，出问题找谁" />
+            </label>
+          </div>
+
+          <div class="switch-row">
+            <label class="switch">
+              <input type="checkbox" id="f_autostart" />
+              <span data-i18n="import.switch.autostart">打开 CLI Dock 时自动启动</span>
+            </label>
+            <label class="switch">
+              <input type="checkbox" id="f_autorestart" />
+              <span data-i18n="import.switch.autorestart">异常退出后自动重启</span>
+            </label>
+            <label class="switch num">
+              <span data-i18n="import.switch.maxRestarts">最多重启</span>
+              <input type="number" id="f_maxrestart" min="1" max="50" step="1" value="5" />
+              <span data-i18n="import.switch.times">次</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <span class="muted" id="importHint"></span>
+          <div>
+            <button class="btn btn-ghost" data-close="importModal" data-i18n="common.cancel">取消</button>
+            <button class="btn btn-primary" id="btnSaveApp" data-i18n="import.save">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置 -->
+    <div class="modal-root hidden" id="settingsModal">
+      <div class="modal-backdrop" data-close="settingsModal"></div>
+      <div class="modal narrow" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <h2 data-i18n="settings.title">设置</h2>
+          <button class="btn btn-icon" data-close="settingsModal" data-i18n-title="common.close" title="关闭">✕</button>
+        </div>
+        <div class="modal-body">
+          <label class="field">
+            <span><span data-i18n="settings.language">界面语言</span> <em data-i18n="settings.language.hint">立即生效，托盘菜单一起变</em></span>
+            <select id="s_language">
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <label class="field">
+            <span data-i18n="settings.ps">PowerShell 路径</span>
+            <input id="s_ps" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span><span data-i18n="settings.python">Python 路径</span> <em data-i18n="settings.python.hint">可用 python / py / 绝对路径</em></span>
+            <input id="s_python" spellcheck="false" />
+          </label>
+          <label class="field">
+            <span data-i18n="settings.grace">温和停止的等待时间（毫秒）</span>
+            <input id="s_grace" type="number" min="500" step="500" />
+          </label>
+          <label class="switch" style="margin-top: 4px">
+            <input type="checkbox" id="s_metrics" />
+            <span data-i18n="settings.metrics">采集每个进程的 CPU / 内存 / 温度（会多一个常驻 PowerShell，约 80–100MB）</span>
+          </label>
+        </div>
+        <div class="modal-foot">
+          <span class="muted" data-i18n="settings.footer">配置保存在 data/config.json</span>
+          <div>
+            <button class="btn btn-ghost" data-close="settingsModal" data-i18n="common.cancel">取消</button>
+            <button class="btn btn-primary" id="btnSaveSettings" data-i18n="common.save">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/i18n.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

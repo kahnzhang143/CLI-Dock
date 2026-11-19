@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="mark-title">
+  <title id="mark-title">CLI Dock</title>
+  <!-- 透明底标记：全部走 currentColor，内联进顶栏后跟随明亮 / 深色主题变色 -->
+  <g transform="translate(0 8)">
+    <path d="M168 117 L256 195 L168 273" fill="none" stroke="currentColor" stroke-width="44"
+          stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="4"/>
+    <rect x="294" y="240" width="74" height="48" rx="12" fill="currentColor"/>
+    <path d="M153 318 H330" stroke="currentColor" stroke-width="14" stroke-linecap="round"/>
+    <path d="M154.5 354 H282" stroke="currentColor" stroke-width="11" stroke-linecap="round"/>
+    <path d="M156 390 H238" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  </g>
+</svg>

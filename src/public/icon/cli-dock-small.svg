@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="small-title">
+  <title id="small-title">CLI Dock</title>
+  <!--
+    极小尺寸版（favicon 16/24、托盘 18、顶栏 30、任务栏 32）。
+    16px 时 1 像素 = 32 单位：只留一个形态，笔画 84 单位≈2.6px，
+    任何第二形态（光标 / 清单）都会和它粘成一坨，所以全部省掉；
+    图形占比放大到 56% × 64%，30px 下才不显空。
+  -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#0058A3"/>
+  <path d="M152 134 L356 256 L152 378" fill="none" stroke="#FFDB00" stroke-width="84"
+        stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="4"/>
+</svg>

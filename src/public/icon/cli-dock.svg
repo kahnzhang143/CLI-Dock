@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="clidock-title clidock-desc">
+  <title id="clidock-title">CLI Dock</title>
+  <desc id="clidock-desc">终端提示符与逐行收短的清单：散落的命令行程序集中纳管于一处。</desc>
+
+  <!--
+    配色：深蓝 #0058A3 底 / 亮黄 #FFDB00 图。
+    黄蓝是品牌级的强对比，再叠渐变与暗角就会发脏，所以这里刻意做纯平涂：
+    层次只由「线长」与「线宽」递减表达，不加透明度（黄色降低透明度会偏绿）。
+  -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#0058A3"/>
+  <rect x="1" y="1" width="510" height="510" rx="111" fill="none"
+        stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="2"/>
+
+  <g transform="translate(0 8)">
+    <!-- 1. 提示符 >_ -->
+    <path d="M168 117 L256 195 L168 273" fill="none" stroke="#FFDB00" stroke-width="44"
+          stroke-linecap="round" stroke-linejoin="miter" stroke-miterlimit="4"/>
+    <rect x="294" y="240" width="74" height="48" rx="12" fill="#FFDB00"/>
+
+    <!-- 2. 清单：三行，一行比一行短、一行比一行细（左端外沿对齐 146） -->
+    <path d="M153 318 H330" stroke="#FFDB00" stroke-width="14" stroke-linecap="round"/>
+    <path d="M154.5 354 H282" stroke="#FFDB00" stroke-width="11" stroke-linecap="round"/>
+    <path d="M156 390 H238" stroke="#FFDB00" stroke-width="8" stroke-linecap="round"/>
+  </g>
+</svg>

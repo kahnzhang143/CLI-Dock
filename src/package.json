@@ -1,0 +1,13 @@
+{
+  "name": "cli-dock",
+  "version": "1.0.0",
+  "private": true,
+  "description": "本地命令行程序管理器：导入一次，点一下启动，状态、日志、地址集中看",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
